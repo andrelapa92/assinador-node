@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize';
 import dbConfig from '../config/database.js';
 import UserModel from './userModel.js';
+import RestaurantModel from './restaurantModel.js';
 
 const env = process.env.NODE_ENV || 'development';
 const config = dbConfig[env];
@@ -13,7 +14,8 @@ if (config.use_env_variable) {
 }
 
 const models = {
-    User: UserModel(sequelize, Sequelize.DataTypes)
+    User: UserModel(sequelize, Sequelize.DataTypes),
+    Restaurant: RestaurantModel(sequelize, Sequelize.DataTypes)
 };
 
 Object.keys(models).forEach(modelName => {

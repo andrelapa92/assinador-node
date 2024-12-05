@@ -1,9 +1,10 @@
 import models from "../models/index.js";
-// import * as dateFnsTz from 'date-fns-tz';
+import * as dateFnsTz from 'date-fns-tz';
 
-// const timeZone = 'America/Sao_Paulo';
-// const date = new Date();
-// const zonedDate = dateFnsTz.formatInTimeZone(date, timeZone);
+const timeZone = 'America/Sao_Paulo';
+const date = new Date();
+const formatString = 'yyyy-MM-dd HH:mm:ss';
+const zonedDate = dateFnsTz.formatInTimeZone(date, timeZone, formatString);
 
 async function getUsers() {
     try {
@@ -37,8 +38,8 @@ async function getUserByEmail(email) {
 
 async function createUser(reqBody) {
     try {
-        reqBody.created_at = new Date;
-        reqBody.updated_at = new Date;
+        reqBody.created_at = zonedDate;
+        reqBody.updated_at = zonedDate;
         return await models.User.create(reqBody);
     } catch (error) {
         throw new Error('Erro ao inserir usuário no banco de dados.');
@@ -47,7 +48,7 @@ async function createUser(reqBody) {
 
 async function updateUser(existingUser, body) {
     try {
-        body.updated_at = new Date;
+        body.updated_at = zonedDate;
         return await existingUser.update(body);
     } catch (error) {
         throw new Error('Erro ao atualizar usuário no banco de dados.');
