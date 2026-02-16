@@ -1,9 +1,16 @@
-# REST API em NodeJS
-Este projeto foi desenvolvido com o intuito de servir como base para uma aplicação em NodeJS.<br>
+# Assinador de documentos em NodeJS
+Este projeto foi desenvolvido com o intuito de assinar documentos a partir de uma aplicação em NodeJS.<br>
 Foram utilizadas bibliotecas amplamente conhecidas como Express e Sequelize.
 
 ## Primeiros Passos
-Para rodar o projeto, basta clonar o repositório e executar o comando `npm install` para instalar todas as dependências.
+Para rodar o projeto, basta executar os seguintes comandos:
+
+# clonar o repositório
+`git clone https://github.com/andrelapa92/assinador-node.git`
+# copiar variáveis de ambiente
+`cp .env.example .env`
+# subir os containers
+`docker compose up -d --build`
 
 ## Rotas
 
