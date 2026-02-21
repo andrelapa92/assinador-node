@@ -26,12 +26,18 @@ export class SignatureService {
     const outputPath = path.resolve(process.cwd(), 'resources', 'arquivos', 'assinatura.p7s');
 
     try {
-      // Grava a assinatura em disco (binário)
-      fs.writeFileSync(outputPath, signatureBuffer);
-      console.log(`Assinatura gravada com sucesso em: ${outputPath}`);
+
+      // Verifica se o arquivo já existe
+      if (fs.existsSync(outputPath)) {
+        console.log(`Arquivo .p7s já existe em: ${outputPath}`);
+      } else {
+        // Grava a assinatura em disco (binário)
+        fs.writeFileSync(outputPath, signatureBuffer);
+        console.log(`Assinatura gravada com sucesso em: ${outputPath}`);
+      }
+      
     } catch (error) {
       console.error('Erro ao gravar arquivo .p7s em disco:', error);
-      
     }
     
     return { signature: signatureBuffer.toString('base64') };

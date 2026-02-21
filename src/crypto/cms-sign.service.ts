@@ -17,18 +17,16 @@ export class CmsSignService {
       // Buscar pelo ALIAS solicitado no desafio
       const targetAlias = 'e2618a8b-20de-4dd2-b209-70912e3177f4';
       
-      // No node-forge, buscar o bag pelo Alias
-      const bags = p12.getBags({ friendlyName: targetAlias });
-      
-      // Valida a existência de bags
-      if (!bags) {
-        throw new BadRequestException(`Nenhum bag encontrado para o alias: ${targetAlias}`);
-      }
-      // Extrai os arrays (ou undefined)
-      const certBag = bags[forge.pki.oids.certBag]?.[0];
-      const keyBag = bags[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0] || 
-                     bags[forge.pki.oids.keyBag]?.[0];
-      
+      const certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag];
+      const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] || 
+                      p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag];
+
+      // Tenta encontrar o certificado que possui o alias específico
+      let certBag = certBags?.find(bag => bag.attributes.friendlyName?.[0] === targetAlias) || certBags?.[0];
+
+      // Tenta encontrar a chave que possui o alias específico ou pega a primeira
+      let keyBag = keyBags?.find(bag => bag.attributes.friendlyName?.[0] === targetAlias) || keyBags?.[0];
+
       // Valida a existência do certificado e chave
       if (!certBag) {
         throw new BadRequestException(`Certificado não encontrado para o alias: ${targetAlias}`);
@@ -60,13 +58,11 @@ export class CmsSignService {
           },
           {
             type: forge.pki.oids.messageDigest,
-            // Remova o campo value ou use as any para o Forge preencher automaticamente
-          } as any, 
+            // Deixar o Forge preencher automaticamente o campo value
+          } as any,
           {
             type: forge.pki.oids.signingTime,
-            // O Forge espera que a data seja formatada internamente, 
-            // mas o tipo exige string. Usamos cast para satisfazer o compilador.
-            value: new Date() as any,
+            value: new Date(),
           },
         ],
       });
