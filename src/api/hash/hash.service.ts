@@ -10,11 +10,11 @@ export class HashService {
     
     // O buffer do arquivo no servidor está em file.buffer
     md.update(file.buffer.toString('binary'));
-    const hashedDoc = md.digest().toHex();
+    const hash = md.digest().toHex();
 
     return {
       file: file.originalname,
-      hashedDoc: hashedDoc,
+      hash: hash,
     };
   }
 }

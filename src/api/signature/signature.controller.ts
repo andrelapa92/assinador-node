@@ -29,13 +29,22 @@ export class SignatureController {
     },
     @Body('password') password: string,
   ): Promise<SignResponseDto> {
-    if (!files?.file || !files?.pkcs12 || !password) {
-      throw new BadRequestException('Parâmetros inválidos');
+    const documentFile = files?.file?.[0];
+    const certificateFile = files?.pkcs12?.[0];
+
+    if (!documentFile) {
+      throw new BadRequestException('O arquivo a ser assinado é obrigatório');
+    }
+    if (!certificateFile) {
+      throw new BadRequestException('O certificado digital (PKCS12) é obrigatório');
+    }
+    if (!password) {
+      throw new BadRequestException('A senha do certificado é obrigatória');
     }
 
     return this.signatureService.signDocument(
-      files.file[0].buffer,
-      files.pkcs12[0].buffer,
+      documentFile.buffer,
+      certificateFile.buffer,
       password,
     );
   }
