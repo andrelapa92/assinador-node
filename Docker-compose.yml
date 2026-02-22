@@ -7,8 +7,8 @@ services:
     volumes:
       - ./src:/app/src
       - ./package.json:/app/package.json
-      - ./output:/app/resources/arquivos
-      - ./resources/cert/cadeia:/app/resources/cert/cadeia
+      - ./output:/app/output
+      - ./resources:/app/resources
     ports:
       - "3000:3000"
     environment:
