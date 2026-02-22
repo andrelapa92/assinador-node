@@ -5,9 +5,12 @@ services:
       dockerfile: Dockerfile
     container_name: node-api-backend
     volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
       - ./output:/app/resources/arquivos
       - ./resources/cert/cadeia:/app/resources/cert/cadeia
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: production
+      - NODE_ENV=production
+      - TZ=America/Sao_Paulo

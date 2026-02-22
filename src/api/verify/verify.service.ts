@@ -77,9 +77,19 @@ export class VerifyService {
       // 7. Sucesso - Extração final de dados
       const cn = cert.subject.getField('CN')?.value ?? 'Desconhecido';
       let signingTime = new Date().toISOString();
-      const timeAttr = attrs.find(a => a.type === forge.pki.oids.signingTime);
+
+      const timeAttr = attrs.find(a => 
+        a.type === forge.pki.oids.signingTime || 
+        a.type === 'signingTime' ||
+        forge.pki.oids[a.type] === 'signingTime'
+      );
+
       if (timeAttr?.value?.[0]) {
-        signingTime = new Date(timeAttr.value[0]).toISOString();
+        const dateValue = timeAttr.value[0].value || timeAttr.value[0];
+        const parsedDate = new Date(dateValue);
+        if (!isNaN(parsedDate.getTime())) {
+          signingTime = parsedDate.toISOString();
+        }
       }
 
       return {

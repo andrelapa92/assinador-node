@@ -102,27 +102,50 @@ export class CmsVerifyService {
 
       // 6. Sucesso - Extração final de dados
       const cn = cert.subject.getField('CN')?.value ?? 'Desconhecido';
-      
+
       // Tratamento seguro para a data de assinatura
       let signingTime: string;
       try {
-        const timeAttr = signer.authenticatedAttributes.find((a: any) => 
-          a.type === forge.pki.oids.signingTime || forge.pki.oids[a.type] === 'signingTime'
-        );
+        // OID oficial para signingTime: 1.2.840.113549.1.9.5
+        const SIGNING_TIME_OID = '1.2.840.113549.1.9.5';
         
-        if (timeAttr && timeAttr.value) {
-          // O forge extrai a data como uma string UTCTime ou GeneralizedTime dentro do array
-          const rawDate = Array.isArray(timeAttr.value) ? timeAttr.value[0] : timeAttr.value;
-          // Se for um objeto ASN.1, pegamos o valor interno
-          const dateValue = typeof rawDate === 'object' ? rawDate.value : rawDate;
+        const timeAttr = signer.authenticatedAttributes.find((a: any) => 
+          a.type === SIGNING_TIME_OID || a.type === forge.pki.oids.signingTime
+        );
+
+        if (timeAttr) {
+          // No ASN.1, o valor de um atributo fica dentro de um SET (value[0])
+          // O Forge pode retornar como um array de bytes ou uma string UTCTime
+          let rawDate = Array.isArray(timeAttr.value) ? timeAttr.value[0] : timeAttr.value;
           
-          const d = new Date(dateValue);
-          signingTime = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+          // Se for um objeto ASN.1 complexo, extraímos o valor real
+          if (rawDate && typeof rawDate === 'object' && rawDate.value) {
+            rawDate = rawDate.value;
+          }
+          
+          if (typeof rawDate === 'string' && /^\d{12}Z$/.test(rawDate)) {
+              // Parser manual para UTCTime: YYMMDDHHMMSSZ
+              const year = parseInt(rawDate.substring(0, 2), 10);
+              const fullYear = year < 50 ? 2000 + year : 1900 + year;
+              const month = parseInt(rawDate.substring(2, 4), 10) - 1; // Meses no JS são 0-11
+              const day = parseInt(rawDate.substring(4, 6), 10);
+              const hour = parseInt(rawDate.substring(6, 8), 10);
+              const min = parseInt(rawDate.substring(8, 10), 10);
+              const sec = parseInt(rawDate.substring(10, 12), 10);
+
+              const d = new Date(Date.UTC(fullYear, month, day, hour, min, sec));
+              signingTime = d.toISOString();
+          } else {
+              const d = new Date(rawDate);
+              signingTime = !isNaN(d.getTime()) ? d.toISOString() : `Data original: ${rawDate}`;
+          }
+
         } else {
-          signingTime = new Date().toISOString();
+          signingTime = "Data não encontrada no arquivo";
         }
       } catch (e) {
-        signingTime = new Date().toISOString(); // Fallback para data atual se falhar o parse
+        console.error("Erro ao extrair data:", e.message);
+        signingTime = "Erro no parse da data";
       }
 
       return {

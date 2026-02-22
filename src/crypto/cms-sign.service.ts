@@ -34,7 +34,7 @@ export class CmsSignService {
       if (!keyBag) {
         throw new BadRequestException(`Chave privada não encontrada para o alias: ${targetAlias}`);
       }
-      // Agora o TS sabe que são válidos (não são mais undefined)
+      
       const certificate = certBag.cert as forge.pki.Certificate;
       const privateKey = keyBag.key as forge.pki.PrivateKey;
 

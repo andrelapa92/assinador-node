@@ -13,7 +13,7 @@ import { HashResponseDto } from './dto/hash-response.dto';
 export class HashController {
   constructor(private readonly hashService: HashService) {}
 
-  @Post('hash-file') // endpoin
+  @Post('hash-file') // endpoint
   @UseInterceptors(FileInterceptor('file')) // 'file' é o nome do campo no form-data
   async getHash(@UploadedFile() file: Express.Multer.File): Promise<HashResponseDto> {
     if (!file) {
