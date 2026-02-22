@@ -6,12 +6,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { CmsVerifyService } from 'src/crypto/cms-verify.service';
+import { VerifyService } from './verify.service';
 import { VerifyResponseDto } from './dto/verify-response.dto';
 
 @Controller()
 export class VerifyController {
-  constructor(private readonly cmsVerifyService: CmsVerifyService) {}
+  constructor(private readonly verifyService: VerifyService) {}
 
   @Post('verify')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'file', maxCount: 1 }]))
@@ -28,9 +28,8 @@ export class VerifyController {
     }
 
     try {
-      const result = this.cmsVerifyService.verify(documentFile.buffer) as VerifyResponseDto;
+      const result = this.verifyService.verifySignature(documentFile.buffer) as VerifyResponseDto;
 
-      // O service agora já retorna o objeto no formato correto ou com erro
       if (result.status === 'INVALIDO') {
       return { 
         status: 'INVALIDO', 

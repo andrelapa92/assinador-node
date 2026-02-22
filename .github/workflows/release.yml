@@ -1,0 +1,24 @@
+name: Desafio de Criptografia e Assinatura Digital
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Compactar Projeto
+        run: |
+          zip -r desafio-bry-v1.zip . -x "*.git*" "node_modules/*" "output/*"
+
+      - name: Criar Release no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: desafio-bry-v1.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
