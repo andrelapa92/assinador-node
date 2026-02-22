@@ -4,48 +4,83 @@ import { VerifyResponseDto } from './dto/verify-response.dto';
 
 @Injectable()
 export class VerifyService {
+
   verifySignature(cmsBuffer: Buffer): VerifyResponseDto {
     try {
-      const der = forge.util.createBuffer(cmsBuffer.toString('binary'));
-      const asn1 = forge.asn1.fromDer(der);
+      // 1. Detecta o formato (Base64 ou Binário) e faz o Parse
+      let rawContent: string;
+      const bufferString = cmsBuffer.toString('utf8');
+      const isBase64 = /^[A-Za-z0-9+/=]+\s*$/.test(bufferString.trim());
       
-      const p7 = forge.pkcs7.messageFromAsn1(asn1) as forge.pkcs7.PkcsSignedData;
+      rawContent = isBase64 ? forge.util.decode64(bufferString) : cmsBuffer.toString('binary');
 
-      const isValid = (p7 as any).verify(); 
+      const der = forge.util.createBuffer(rawContent);
+      const asn1 = forge.asn1.fromDer(der);
+      const p7 = forge.pkcs7.messageFromAsn1(asn1);
+      const p7Any = p7 as any;
 
-      if (!isValid) {
-        return { status: 'INVALIDO', error: 'A integridade do documento falhou ou a assinatura é inválida.' };
+      // 2. Busca o Signatário (SignerInfo) - Tentando múltiplos nomes de propriedade
+      const signer = (p7Any.signers && p7Any.signers.length > 0) 
+                     ? p7Any.signers[0] 
+                     : (p7Any.signerInfos && p7Any.signerInfos.length > 0)
+                        ? p7Any.signerInfos[0]
+                        : null;
+
+      if (!signer) {
+        return { status: 'INVALIDO', error: 'SignerInfo não encontrado na assinatura.' };
       }
 
-      const cert = p7.certificates?.[0];
+      // 3. Busca o Certificado do Signatário
+      const cert = p7Any.certificates?.[0];
       if (!cert) {
-        return { status: 'INVALIDO', error: 'Certificado não encontrado' };
+        return { status: 'INVALIDO', error: 'Certificado não encontrado na estrutura PKCS7.' };
       }
 
-      const cn = cert.subject.getField('CN')?.value ?? 'Desconhecido';
-      const signerInfo = (p7 as any).rawCapture?.signerInfos?.[0];
+      // 4. Extrai Atributos Autenticados
+      const attrs = (signer.authenticatedAttributes || signer.authAttributes || []) as any[];
+      if (attrs.length === 0) {
+        return { status: 'INVALIDO', error: 'Atributos autenticados não encontrados.' };
+      }
 
-      let signingTime = '';
-      if (signerInfo?.authenticatedAttributes) {
-        const attr = signerInfo.authenticatedAttributes.find(
-          (a: any) => a.type === forge.pki.oids.signingTime,
-        );
+      // 5. Verificação de Integridade (Hash do Documento)
+      const mdAttr = attrs.find(a => a.type === forge.pki.oids.messageDigest || forge.pki.oids[a.type] === 'messageDigest');
+      if (!mdAttr) {
+        return { status: 'INVALIDO', error: 'Atributo MessageDigest não encontrado.' };
+      }
 
-        if (attr?.value?.[0]) {
-          signingTime = new Date(attr.value[0]).toISOString();
+      const signedHash = forge.util.bytesToHex(mdAttr.value[0]);
+      const actualDocHash = forge.md.sha512.create().update(p7Any.content.getBytes()).digest().toHex();
+
+      if (signedHash !== actualDocHash) {
+        return { status: 'INVALIDO', error: 'A integridade falhou: o documento foi alterado.' };
+      }
+
+      // 6. Verificação de Autenticidade (Criptografia RSA)
+      // Reconstruímos o SET de atributos usando o rawContext para evitar erros de length e hash
+      const attrSet = forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.SET, true, []) as any;
+      for (const attr of attrs) {
+        if (attr.rawContext) {
+          attrSet.value.push(attr.rawContext);
         }
       }
 
-      const content = p7.content;
-      const hash = forge.md.sha512.create();
+      const bytesToVerify = forge.asn1.toDer(attrSet).getBytes();
+      const md = forge.md.sha512.create().update(bytesToVerify);
       
-      if (!content) {
-        throw new Error('Conteúdo assinado não encontrado');
+      const publicKey = cert.publicKey as forge.pki.rsa.PublicKey;
+      const isValid = publicKey.verify(md.digest().getBytes(), signer.signature);
+
+      if (!isValid) {
+        return { status: 'INVALIDO', error: 'Assinatura digital inválida (criptografia não confere).' };
       }
 
-      // Convertendo para string binária se for um objeto Buffer do forge
-      const dataToHash = typeof content === 'string' ? content : content.getBytes();
-      hash.update(dataToHash);
+      // 7. Sucesso - Extração final de dados
+      const cn = cert.subject.getField('CN')?.value ?? 'Desconhecido';
+      let signingTime = new Date().toISOString();
+      const timeAttr = attrs.find(a => a.type === forge.pki.oids.signingTime);
+      if (timeAttr?.value?.[0]) {
+        signingTime = new Date(timeAttr.value[0]).toISOString();
+      }
 
       return {
         status: 'VALIDO',
@@ -53,15 +88,14 @@ export class VerifyService {
         infos: {
           nomeSignatario: String(cn),
           dataAssinatura: signingTime,
-          hashDocumento: hash.digest().toHex(),
+          hashDocumento: actualDocHash,
           algoritmoHash: 'SHA-512',
         },
       };
+
     } catch (error: any) {
-      return {
-        status: 'INVALIDO',
-        error: error?.message || 'Erro desconhecido',
-      };
+      console.error('Erro na Verificação:', error);
+      return { status: 'INVALIDO', error: `Erro técnico: ${error.message}` };
     }
   }
 }

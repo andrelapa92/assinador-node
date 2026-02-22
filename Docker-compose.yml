@@ -6,6 +6,7 @@ services:
     container_name: node-api-backend
     volumes:
       - ./output:/app/resources/arquivos
+      - ./resources/cert/cadeia:/app/resources/cert/cadeia
     ports:
       - "3000:3000"
     environment:

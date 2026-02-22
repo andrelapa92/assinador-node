@@ -6,12 +6,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { VerifyService } from './verify.service';
+import { CmsVerifyService } from 'src/crypto/cms-verify.service';
 import { VerifyResponseDto } from './dto/verify-response.dto';
 
 @Controller()
 export class VerifyController {
-  constructor(private readonly verifyService: VerifyService) {}
+  constructor(private readonly cmsVerifyService: CmsVerifyService) {}
 
   @Post('verify')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'file', maxCount: 1 }]))
@@ -21,10 +21,26 @@ export class VerifyController {
       file?: Express.Multer.File[];
     },
   ): Promise<VerifyResponseDto> {
-    if (!files?.file?.length) {
-      throw new BadRequestException('Arquivo assinado não informado');
+
+    const documentFile = files?.file?.[0];
+    if (!documentFile) {
+      throw new BadRequestException('O arquivo a ser verificado é obrigatório');
     }
 
-    return this.verifyService.verifySignature(files.file[0].buffer);
+    try {
+      const result = this.cmsVerifyService.verify(documentFile.buffer) as VerifyResponseDto;
+
+      // O service agora já retorna o objeto no formato correto ou com erro
+      if (result.status === 'INVALIDO') {
+      return { 
+        status: 'INVALIDO', 
+        error: result.error || 'Assinatura inválida.' 
+      };
+    }
+
+      return result; // Retorna status: 'VALIDO' e infos
+    } catch (error) {
+      return { status: 'INVALIDO', error: error.message };
+    }
   }
 }
