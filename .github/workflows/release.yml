@@ -1,9 +1,9 @@
-name: Desafio de Criptografia e Assinatura Digital
+name: Entrega do Desafio
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*' # Dispara ao enviar uma tag começando com 'v' (tags de versões)
 
 jobs:
   build:
@@ -12,13 +12,22 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Compactar Projeto
+      - name: Criar Pacote de Entrega (.zip)
         run: |
-          zip -r desafio-bry-v1.zip . -x "*.git*" "node_modules/*" "output/*"
+          # Compacta o projeto ignorando pastas desnecessárias (node_modules, logs, git)
+          zip -r desafio-assinatura-digital.zip . -x "*.git*" "node_modules/*" "dist/*" "output/*" ".github/*"
 
-      - name: Criar Release no GitHub
+      - name: Publicar Release
         uses: softprops/action-gh-release@v2
         with:
-          files: desafio-bry-v1.zip
+          files: desafio-assinatura-digital.zip
+          name: Release ${{ github.ref_name }}
+          body: |
+            Entrega oficial do Desafio de Criptografia e Assinatura Digital.
+            
+            **Como executar:**
+            1. Certifique-se de ter o Docker Desktop instalado.
+            2. Extraia o arquivo .zip.
+            3. Execute `docker-compose up`.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
